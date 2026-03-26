@@ -1,0 +1,40 @@
+---
+title: "Using the New York Times Books API in R"
+author: "Guibril Ramde"
+format: html
+editor: visual
+---
+
+## Approach
+
+For this assignment, I selected the \*\*New York Times Books API\*\*, specifically the endpoint for the current \*\*hardcover fiction best seller list\*\*. The purpose of this analysis is to retrieve data from the API, convert the JSON response into a tidy data frame in R, and examine the current best-selling books on the list.\
+\
+To access the API securely, I created a New York Times Developer Network account and generated an API key. Instead of hard coding the key directly in the script, I stored it in my \`.Renviron\` file and accessed it in R using \`Sys.getenv("NYT_API_KEY")\`. This approach protects the key from being exposed in a public GitHub repository.\
+\
+Next, I used the \`httr\` package to make a GET request to the Books API endpoint. After receiving the response, I used \`jsonlite\` to parse the JSON content. Since the full API response contains nested fields and metadata, I extracted the \`books\` portion from \`data\$results\`, which contains the actual book records for the selected list.\
+\
+I then transformed the nested JSON data into a tidy tibble and selected the variables most relevant for analysis, such as rank, title, author, publisher, and weeks on list. Any unnecessary nested fields were excluded in order to produce a cleaner and more readable data frame.\
+\
+Finally, I used the cleaned data to perform a small analysis of the current hardcover fiction best sellers and included a simple table or visualization to help answer an interesting question based on the API results.
+
+## Coding Section
+
+```{r}
+library(httr)
+library(tidyverse)
+library(jsonlite)
+library(tibble)
+```
+
+```{r}
+api_key <- Sys.getenv("NYT_API_KEY")
+api_key
+
+url <- paste0("https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=", api_key)
+
+response <- GET(url)
+response
+data <- fromJSON(content(response, "text"))
+
+data
+```
