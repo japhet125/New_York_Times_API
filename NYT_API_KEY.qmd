@@ -17,6 +17,19 @@ I then transformed the nested JSON data into a tidy tibble and selected the vari
 \
 Finally, I used the cleaned data to perform a small analysis of the current hardcover fiction best sellers and included a simple table or visualization to help answer an interesting question based on the API results.
 
+**##Selecting The endpoint and brief description (API Selected)**\
+I selected the New York Times Books API endpoint for the current hardcover fiction list:\
+\`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json\`\
+This endpoint returns the current New York Times hardcover fiction best seller list, including information such as title, author, publisher, current rank, previous rank, and weeks on the list.
+
+**##Request parameters**\
+The request used the following parameter:\
+- \`api-key\`: my New York Times API key stored securely in \`.Renviron\`\
+The list chosen for this project was \`hardcover-fiction\`, which is included in the endpoint path.
+
+**##Question of Interest**\
+Which books are currently ranked highest on the New York Times hardcover fiction best seller list, and how does their current position compare with their popularity over time, as measured by weeks on the list and previous-week rank?
+
 ## Coding Section
 
 ```{r}
@@ -28,7 +41,6 @@ library(tibble)
 
 ```{r}
 api_key <- Sys.getenv("NYT_API_KEY")
-api_key
 
 url <- paste0("https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=", api_key)
 
@@ -38,3 +50,90 @@ data <- fromJSON(content(response, "text"))
 
 data
 ```
+
+**##Data Cleaning Notes**
+
+The API response includes metadata and nested JSON fields. I extracted only the books portion from data\$results, since this contains the actual records for each book. I then selected a smaller set of relevant variables for analysis, including rank, title, author, publisher, week_on_list, and rank_last_week.
+
+For rank_last_week, missing values were interpreted as newly listed books. To make the visualization easier to read, these missing values were labeled as "NEW.
+
+```{r}
+class(data$results)
+books <- as_tibble(data$results$books)
+books |>
+  select(title, author, publisher, rank, description)
+
+```
+
+**##Visualizing the rank of books**
+
+```{r}
+books_clean <- books |>
+  select(rank, author, publisher, title ) |>
+  arrange(rank)
+ggplot(books_clean, aes(x = reorder(title, -rank), y = rank, fill = title)) +
+  geom_col() +
+  coord_flip() +
+  geom_text(aes(label = rank), hjust = -0.2) +
+  labs(
+    title = "Rank of the Top Books Best Sellers",
+    x = "Book Title",
+    y = "Rank (1 = Best)"
+  ) + theme(legend.position = "none")
+```
+
+**##Visualization**
+
+The book ranked number 1 on the current list is \*JUDGE STONE\*. This indicates that it is the top-ranked book on this week’s hardcover fiction best seller list, though this ranking alone does not fully explain the author’s overall quality or long-term success. Though honestly, rank can be slightly awkward as a bar height because **smaller is better**. A table may communicate it more cleanly.
+
+**##Column cleaning for analyzing weeks on the list**
+
+```{r}
+books_clean <- books |>
+  select(rank, title, author, publisher, weeks_on_list) |>
+  arrange(rank)
+ggplot(books_clean, aes(x = reorder(title, -rank), y = weeks_on_list, fill = title)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Weeks on List for Current NYT Hardcover Fiction Best Sellers",
+       x = "Book Title",
+       y = "Weeks on List") + theme (legend.position = "none")
+
+```
+
+**##analyzing books week on list**
+
+To visualize the books week on list ranking, I used a bar chart geom_col where each book’s position reflects how long the book has been on the list. Missing values were handled to represent newly listed books, ensuring a complete and interpretable visualization.
+
+we can observe the book with the title ALCHEMISED being on the list for longer period of time, following THE WIDOW and THE CORRESPONDENT
+
+we can conclude that while the number of weeks on the list reflects a book’s sustained popularity, it does not necessarily indicate that the book is currently the best-selling. The weekly rank provides a more accurate measure of current performance, whereas weeks on list captures long-term success and consistency in sales
+
+**##Exploring the rank_last_week**
+
+```{r}
+books_clean_2 <- books |>
+  select(rank, rank_last_week, title, author) |>
+  mutate(
+    rank_last_week_label = ifelse(is.na(rank_last_week), "NEW", as.character(rank_last_week)),
+    rank_last_week = ifelse(is.na(rank_last_week), max(rank, na.rm = TRUE) + 1,rank_last_week)
+    
+  )
+ggplot(books_clean_2, aes(x = reorder(title, rank_last_week), y = rank_last_week, fill = title)) +
+  geom_col() +
+  coord_flip() +
+  geom_text(aes(label = rank_last_week_label), hjust = -0.2) +
+  labs(
+    title = "Rank Last Week for Current NYT Hardcover Fiction Best Sellers",
+    x ="Book Title",
+    y = "Rank in the past Week"
+  ) + theme(legend.position = "none")
+```
+
+**##Visualization**
+
+To visualize last week’s rankings, I used a bar chart where each book’s position reflects its rank in the previous week. Since rankings are ordinal (with lower values indicating higher performance), the titles were reordered based on rank_last_week. Missing values were handled to represent newly listed books, ensuring a complete and interpretable visualization.
+
+**##Conclusion**
+
+Using the New York Times Books API, I retrieved the current hardcover fiction best seller list and transformed the JSON response into a tidy data frame in R. The analysis showed the current top-ranked books, how long they have remained on the list, and how their rankings compare with the previous week. Current rank provides the strongest indicator of present best-selling performance, while weeks on list reflects longer-term popularity and consistency.
